@@ -1,0 +1,251 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Palindrome Checker with Stack - Visual + Sound</title>
+  <style>
+    /* 🌈 Styles remain mostly the same as before */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #A1C4FD 0%, #C2E9FB 100%);
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #5D1049;
+    }
+
+    .input-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #5D1049;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #5D1049;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    .blocks {
+      display: flex;
+      justify-content: space-around;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .block {
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      padding: 20px;
+      width: 30%;
+      min-width: 250px;
+      min-height: 200px;
+      position: relative;
+    }
+
+    .block h3 {
+      margin-top: 0;
+      color: #5D1049;
+    }
+
+    #characterBox span {
+      display: inline-block;
+      background: #f48fb1;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 6px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .stack-visual {
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .stack-box {
+      width: 50px;
+      height: 50px;
+      background-color: #81c784;
+      margin: 5px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 8px;
+      font-weight: bold;
+      color: white;
+      animation: stackAnim 0.3s ease;
+    }
+
+    @keyframes stackAnim {
+      0% { transform: scaleY(0); opacity: 0; }
+      100% { transform: scaleY(1); opacity: 1; }
+    }
+
+    #transitionDiagram {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #ffffffcc;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    #result {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 20px;
+      color: #5D1049;
+    }
+
+    .speed-control {
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 30px;
+    }
+
+    .speed-control input {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>PDA Simulator for Pallindrome Recognition</h1>
+
+  <div class="input-section">
+    <input type="text" id="inputString" placeholder="Enter a string to check...">
+    <button onclick="startVisualization()">Check</button>
+  </div>
+
+  <div class="speed-control">
+    <label for="speedSlider"><strong>Speed:</strong> Fast 🚀 <input type="range" id="speedSlider" min="100" max="1000" value="400"> Slow ⏱️</label>
+  </div>
+
+  <div class="blocks">
+    <div class="block">
+        <h3>1. Theory</h3>
+        <p>
+            A <strong>Pushdown Automaton (PDA)</strong> is a type of computational model that extends finite automata by adding a stack for memory.
+            <br><br>
+            For <strong>palindrome recognition</strong>, a PDA reads the first half of the input string while <strong>pushing</strong> each symbol onto the stack. 
+            When the middle of the string is reached (or a designated symbol in case of odd lengths), the PDA begins to <strong>pop</strong> symbols and compare them with the second half of the string.
+            <br><br>
+            If every popped symbol matches the corresponding input symbol and the stack is empty at the end, the string is accepted as a <strong>palindrome</strong>.
+        </p>
+        
+    </div>
+
+    <div class="block">
+      <h3>2. Fetching Characters</h3>
+      <div id="characterBox"></div>
+    </div>
+
+    <div class="block">
+      <h3>3. Stack Operation</h3>
+      <div class="stack-visual" id="stackVisual"></div>
+    </div>
+  </div>
+
+  <div id="transitionDiagram"></div>
+  <div id="result"></div>
+
+  <!-- 🔊 Sound files -->
+  <audio id="pushSound" src="push.mp3"></audio>
+  <audio id="popSound" src="pop.mp3"></audio>
+
+  <script>
+    async function startVisualization() {
+      const input = document.getElementById("inputString").value.trim();
+      const normalized = input.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const charBox = document.getElementById("characterBox");
+      const stackVisual = document.getElementById("stackVisual");
+      const transitionDiagram = document.getElementById("transitionDiagram");
+      const result = document.getElementById("result");
+      const pushSound = document.getElementById("pushSound");
+      const popSound = document.getElementById("popSound");
+      const speed = parseInt(document.getElementById("speedSlider").value);
+
+      charBox.innerHTML = '';
+      stackVisual.innerHTML = '';
+      transitionDiagram.innerHTML = '';
+      result.innerHTML = '';
+
+      if (!input) {
+        alert("Please enter a string.");
+        return;
+      }
+
+      const stack = [];
+      let states = [];
+      let isPalindrome = true;
+
+      for (let ch of normalized) {
+        let span = document.createElement("span");
+        span.innerText = ch;
+        charBox.appendChild(span);
+        await sleep(speed);
+
+        stack.push(ch);
+        pushSound.play();
+
+        const box = document.createElement("div");
+        box.className = "stack-box";
+        box.innerText = ch;
+        stackVisual.appendChild(box);
+        await sleep(speed);
+      }
+
+      await sleep(speed * 2);
+
+      for (let i = 0; i < normalized.length; i++) {
+        const expected = normalized[i];
+        const popped = stack.pop();
+
+        popSound.play();
+
+        states.push(`State ${i + 1}: Compare input[${i}] = '${expected}' with stack pop = '${popped}'`);
+        if (expected !== popped) {
+          isPalindrome = false;
+          states.push(`❌ Mismatch at index ${i}`);
+          break;
+        } else {
+          states.push(`✅ Match at index ${i}`);
+        }
+
+        stackVisual.removeChild(stackVisual.lastChild);
+        await sleep(speed);
+      }
+
+      transitionDiagram.innerHTML = `<h3>🔁 State Transition Diagram</h3><pre>${states.join('\n')}</pre>`;
+      result.innerHTML = isPalindrome 
+        ? "🎉 Yes! It's a Palindrome!" 
+        : "❌ Nope! Not a Palindrome.";
+      result.style.color = isPalindrome ? "green" : "red";
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+
+</body>
+</html>
